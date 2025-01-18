@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import errno
 import os
+import shutil
+import time
 from logging import getLogger
 from pathlib import Path
-from shutil import move, rmtree
+from shutil import move
 from typing import TYPE_CHECKING
 
 from monty.shutil import gzip_dir
@@ -174,3 +177,25 @@ def terminate(tmpdir: Path | str, exception: Exception) -> None:
         symlink_path.symlink_to(job_failed_dir, target_is_directory=True)
 
     raise JobFailure(job_failed_dir, message=msg, parent_error=exception) from exception
+
+
+def rmtree(*args, max_retries=3, retry_wait=10, **kwargs):
+    """
+    rmtree that will retry if we get common NFS errors (files still being deleted, etc)
+    Adapted from https://github.com/teojgo/reframe/blob/master/reframe/utility/osext.py
+    """
+    if "onerror" in kwargs and kwargs["onerror"] is not None:
+        shutil.rmtree(*args, **kwargs)
+        return
+
+    for i in range(max_retries):
+        try:
+            shutil.rmtree(*args, **kwargs)
+            return
+        except OSError as e:
+            if i == max_retries:
+                raise
+            if e.errno in {errno.ENOTEMPTY, errno.EBUSY}:
+                time.sleep(retry_wait)
+            else:
+                raise

@@ -325,7 +325,6 @@ def test_ase_relax_cell_job(tmp_path, monkeypatch):
         )
 
 
-@pytest.mark.skip(reason="ASE 3.24.0 broke parsing with alat")
 def test_relax_job_cell(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OMP_NUM_THREADS", "1")
